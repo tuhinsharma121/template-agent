@@ -70,13 +70,6 @@ async def get_template_agent(sso_token: str | None = None):
                 else {},
             }
 
-            # Add SSL verification setting (verify=False disables cert verification)
-            if not settings.MCP_SSL_VERIFY:
-                server_config["verify"] = False
-                logger.warning(
-                    "SSL certificate verification disabled for MCP connection"
-                )
-
             client = MultiServerMCPClient({settings.MCP_SERVER_NAME: server_config})
             return await client.get_tools()
 
@@ -148,10 +141,8 @@ async def get_template_agent(sso_token: str | None = None):
 
     tool_by_name = {t.name: t for t in tools}
 
-    # Skills base directory — each agent has its own subdirectory
+    # Skills base directory — each sub-agent has its own subdirectory
     skills_base = CONFIG_DIR / "skills"
-    main_skills_dir = skills_base / "main"
-    main_skills_path = [str(main_skills_dir)] if main_skills_dir.exists() else []
 
     subagents_config: list[SubAgent] | None = None
     if subagents_path.exists():
@@ -194,22 +185,19 @@ async def get_template_agent(sso_token: str | None = None):
     system_prompt = get_system_prompt()
     logger.info("Loaded system prompt from prompt.py")
 
-    # Setup memory (AGENTS.md)
+    # Setup memory — load all .md files from agent_config/
     memory_files = []
-    agents_md_path = CONFIG_DIR / "AGENTS.md"
-    if agents_md_path.exists():
-        memory_files.append(str(agents_md_path))
-        logger.info(f"Loaded memory from {agents_md_path}")
-    else:
-        logger.warning(f"AGENTS.md not found at {agents_md_path}")
+    for md_path in sorted(CONFIG_DIR.glob("*.md")):
+        memory_files.append(str(md_path))
+        logger.info(f"Loaded memory from {md_path}")
+    if not memory_files:
+        logger.warning(f"No .md memory files found in {CONFIG_DIR}")
 
-    if main_skills_path:
-        logger.info(f"Main agent skills: {main_skills_dir}")
-    else:
-        logger.warning(f"Main agent skills directory not found: {main_skills_dir}")
-
-    # Setup backend for deep agent
-    backend = LocalShellBackend(root_dir=str(REPO_ROOT))
+    # Sandbox directory for agent shell execution — keeps output files
+    # out of the source tree (e.g., scraped pages, intermediate results).
+    sandbox_dir = REPO_ROOT / ".cache" / "agent-workspace"
+    sandbox_dir.mkdir(parents=True, exist_ok=True)
+    backend = LocalShellBackend(root_dir=str(sandbox_dir))
 
     # Resolve checkpointer and store
     checkpointer = None
@@ -241,7 +229,7 @@ async def get_template_agent(sso_token: str | None = None):
             model=model,
             system_prompt=system_prompt,
             memory=memory_files,
-            skills=main_skills_path,
+            skills=[],
             tools=[],
             subagents=subagents_config,
             backend=backend,
