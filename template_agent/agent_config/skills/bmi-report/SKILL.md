@@ -7,33 +7,20 @@ description: >
 
 # BMI Report Content
 
-Reference for BMI classification, report structure, and tone when generating
-a BMI analysis. Use this to produce consistent, category-specific reports.
+Generate consistent, category-specific BMI reports based on calculated values.
 
 ## When to Use
 
 When generating a BMI analysis report for a user based on calculated BMI value and category.
 
-## BMI Categories
+## Resources
 
-| Range | Category |
-|-------|----------|
-| < 18.5 | Underweight |
-| 18.5–24.9 | Normal |
-| 25–29.9 | Overweight |
-| 30+ | Obese |
+- **Categories & Ranges:** `references/bmi_categories.md`
+- **Health Tips:** `references/health_tips_by_category.md`
+- **Report Structure & Tone:** `assets/report_template.txt`
 
-## Report Structure
+## Critical Requirements
 
-1. **BMI Result** — value + category + one-line interpretation
-2. **Health Tips** — actionable tips relevant to the BMI category
-3. **Disclaimer** — "This is not medical advice. Consult a healthcare professional."
-
-## Tone
-
-Friendly, encouraging, non-judgmental. Never use words like "bad" or "failing" about someone's BMI.
-
-## Gotchas
-
-- **Always include the disclaimer** — it is mandatory in every report.
-- **Tips must be category-specific** — generic wellness advice is not sufficient.
+- **Always include disclaimer** — mandatory in every report
+- **Tips must be category-specific** — see health_tips_by_category.md
+- **Tone: friendly, encouraging, non-judgmental** — never use "bad" or "failing"
