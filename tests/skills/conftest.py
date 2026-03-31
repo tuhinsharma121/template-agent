@@ -1,16 +1,25 @@
 """
 Pytest configuration and fixtures for Deep Agents-style skill evaluation.
-Based on Deep Agents methodology without LangSmith dependency.
 """
 
 import json
+import re
 import time
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any, Optional
 import pytest
 
-# Project root is 2 levels up from this file (tests/skills/conftest.py)
+
+# ============================================================================
+# Constants
+# ============================================================================
+
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+# ============================================================================
+# Session Fixtures (shared across all tests)
+# ============================================================================
 
 
 @pytest.fixture(scope="session")
@@ -22,15 +31,31 @@ def skills_dir():
 @pytest.fixture(scope="session")
 def workspace_dir():
     """Root directory for test workspaces."""
-    workspace = PROJECT_ROOT / "template_agent" / "agent_config" / "workspaces"
+    workspace = PROJECT_ROOT / "tests" / "workspaces"
     workspace.mkdir(exist_ok=True)
     return workspace
 
 
+# ============================================================================
+# Function Fixtures (new instance per test)
+# ============================================================================
+
+
 @pytest.fixture
-def eval_context():
-    """Context for a single evaluation run."""
-    return {"start_time": time.time(), "tool_calls": [], "outputs": {}, "errors": []}
+def tracer():
+    """Execution tracer for capturing agent behavior."""
+    return ExecutionTracer()
+
+
+@pytest.fixture
+def evaluator():
+    """Assertion evaluator for grading outputs."""
+    return AssertionEvaluator()
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
 
 
 def load_skill_evals(skill_name: str) -> Dict[str, Any]:
@@ -45,289 +70,222 @@ def load_skill_evals(skill_name: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def load_skill_content(skill_path: Path) -> str:
-    """Load SKILL.md content."""
-    skill_file = skill_path / "SKILL.md"
-    if not skill_file.exists():
-        raise FileNotFoundError(f"SKILL.md not found at {skill_path}")
-
-    return skill_file.read_text()
+# ============================================================================
+# ExecutionTracer Class
+# ============================================================================
 
 
 class ExecutionTracer:
-    """Track agent execution for trajectory analysis."""
+    """Simple timer for tracking execution duration and token usage."""
 
     def __init__(self):
-        self.steps = []
-        self.tool_calls = []
         self.start_time = None
         self.end_time = None
+        self.total_tokens = 0
 
     def start(self):
-        """Begin tracking."""
+        """Begin timing."""
         self.start_time = time.time()
 
-    def end(self):
-        """End tracking."""
+    def end(self, total_tokens: int = 0):
+        """End timing and record token usage."""
         self.end_time = time.time()
+        self.total_tokens = total_tokens
 
-    def add_step(self, step_type: str, content: str, metadata: Dict = None):
-        """Record an execution step."""
-        self.steps.append(
-            {
-                "type": step_type,
-                "content": content,
-                "metadata": metadata or {},
-                "timestamp": time.time() - self.start_time if self.start_time else 0,
-            }
-        )
-
-    def add_tool_call(self, tool_name: str, args: Dict, result: Any = None):
-        """Record a tool call."""
-        self.tool_calls.append(
-            {
-                "tool": tool_name,
-                "args": args,
-                "result": str(result)[:200] if result else None,
-                "timestamp": time.time() - self.start_time if self.start_time else 0,
-            }
-        )
-
-    def get_trajectory(self) -> Dict:
-        """Get complete execution trajectory."""
-        return {
-            "steps": self.steps,
-            "tool_calls": self.tool_calls,
-            "duration_ms": int((self.end_time - self.start_time) * 1000)
-            if self.end_time
-            else 0,
-            "total_steps": len(self.steps),
-            "total_tool_calls": len(self.tool_calls),
-        }
+    def duration_ms(self) -> int:
+        """Get duration in milliseconds."""
+        if self.end_time and self.start_time:
+            return int((self.end_time - self.start_time) * 1000)
+        return 0
 
 
-@pytest.fixture
-def tracer():
-    """Execution tracer for capturing agent behavior."""
-    return ExecutionTracer()
+# ============================================================================
+# AssertionEvaluator Class
+# ============================================================================
 
 
 class AssertionEvaluator:
-    """Evaluate assertions against outputs."""
+    """
+    Evaluate assertions against outputs using pattern matching.
 
-    @staticmethod
-    def evaluate(assertion: str, output: str, context: Dict = None) -> Dict:
-        """
-        Evaluate a single assertion.
+    Returns dict with: passed (bool|None), evidence (str), confidence (float)
+    """
 
-        Returns dict with:
-        - passed: bool
-        - evidence: str
-        - confidence: float (0-1)
-        """
-        import re
+    # Evaluation patterns mapped to check functions
+    CHECKS = {
+        "bmi_value": lambda self, a, o: self._check_bmi_value(a, o),
+        "category": lambda self, a, o: self._check_category(a, o),
+        "tips_count": lambda self, a, o: self._check_tips_count(a, o),
+        "disclaimer": lambda self, a, o: self._check_disclaimer(a, o),
+        "gradual_loss": lambda self, a, o: self._check_gradual_loss(a, o),
+        "weight_rate": lambda self, a, o: self._check_weight_rate(a, o),
+        "no_extremes": lambda self, a, o: self._check_no_extremes(a, o),
+        "tone": lambda self, a, o: self._check_tone(a, o),
+        "no_negative": lambda self, a, o: self._check_no_negative(a, o),
+    }
 
+    def evaluate(self, assertion: str, output: str, context: Optional[Dict] = None) -> Dict:
+        """Evaluate a single assertion against output."""
         assertion_lower = assertion.lower()
         output_lower = output.lower()
 
-        # Check for BMI value
+        # Try each check pattern
         if "bmi value" in assertion_lower or "bmi is" in assertion_lower:
-            value_match = re.search(r"(\d+\.?\d*)", assertion)
-            if value_match:
-                expected_value = value_match.group(1)
-                # Look for the value in output (flexible format)
-                found = (
-                    expected_value in output
-                    or f"bmi is {expected_value}" in output_lower
-                    or f"bmi: {expected_value}" in output_lower
-                )
+            return self._check_bmi_value(assertion, output)
+
+        if "category" in assertion_lower and any(
+            c in assertion_lower for c in ["normal", "underweight", "overweight", "obese"]
+        ):
+            return self._check_category(assertion, output)
+
+        if "at least" in assertion_lower and "tips" in assertion_lower:
+            return self._check_tips_count(assertion, output)
+
+        if "disclaimer" in assertion_lower:
+            return self._check_disclaimer(assertion, output)
+
+        if "gradual" in assertion_lower and "weight loss" in assertion_lower:
+            return self._check_gradual_loss(assertion, output)
+
+        if any(k in assertion_lower for k in ["safe weight loss rate", "kg/week", "kg per week"]):
+            return self._check_weight_rate(assertion, output)
+
+        if "no extreme" in assertion_lower or "quick fixes" in assertion_lower:
+            return self._check_no_extremes(assertion, output)
+
+        if "tone" in assertion_lower and any(
+            t in assertion_lower for t in ["friendly", "encouraging", "positive", "supportive"]
+        ):
+            return self._check_tone(assertion, output)
+
+        if "no use of" in assertion_lower:
+            return self._check_no_negative(assertion, output)
+
+        # Default: manual evaluation required
+        return {"passed": None, "evidence": "Requires manual evaluation", "confidence": 0.0}
+
+    def _check_bmi_value(self, assertion: str, output: str) -> Dict:
+        """Check if BMI value is present."""
+        match = re.search(r"(\d+\.?\d*)", assertion)
+        if not match:
+            return {"passed": None, "evidence": "No BMI value in assertion", "confidence": 0.0}
+
+        value = match.group(1)
+        found = value in output
+        return {
+            "passed": found,
+            "evidence": f"BMI value {value} {'found' if found else 'not found'}",
+            "confidence": 0.95 if found else 0.9,
+        }
+
+    def _check_category(self, assertion: str, output: str) -> Dict:
+        """Check if BMI category is mentioned."""
+        categories = ["normal", "underweight", "overweight", "obese"]
+        assertion_lower = assertion.lower()
+        output_lower = output.lower()
+
+        for cat in categories:
+            if cat in assertion_lower:
+                found = cat in output_lower
                 return {
                     "passed": found,
-                    "evidence": f"BMI value {expected_value} found in output"
-                    if found
-                    else f"BMI value {expected_value} not found",
+                    "evidence": f"Category '{cat}' {'found' if found else 'not found'}",
                     "confidence": 0.95 if found else 0.9,
                 }
 
-        # Check for category mention
-        if "category" in assertion_lower and any(
-            cat in assertion_lower
-            for cat in ["normal", "underweight", "overweight", "obese"]
-        ):
-            for category in ["normal", "underweight", "overweight", "obese"]:
-                if category in assertion_lower:
-                    found = category in output_lower
-                    return {
-                        "passed": found,
-                        "evidence": f"Category '{category}' found in output"
-                        if found
-                        else f"Category '{category}' not found",
-                        "confidence": 0.95 if found else 0.9,
-                    }
+        return {"passed": None, "evidence": "No category in assertion", "confidence": 0.0}
 
-        # Check for health tips count
-        if "at least" in assertion_lower and "tips" in assertion_lower:
-            count_match = re.search(r"at least (\d+)", assertion_lower)
-            if count_match:
-                required_count = int(count_match.group(1))
-                # Count bullet points or numbered items
-                tip_markers = len(re.findall(r"^\s*[-*•]\s", output, re.MULTILINE))
-                found = tip_markers >= required_count
-                return {
-                    "passed": found,
-                    "evidence": f"Found {tip_markers} tips (required: {required_count})"
-                    if found
-                    else f"Only {tip_markers} tips found (required: {required_count})",
-                    "confidence": 0.9 if found else 0.85,
-                }
+    def _check_tips_count(self, assertion: str, output: str) -> Dict:
+        """Check if minimum number of tips are present."""
+        match = re.search(r"at least (\d+)", assertion.lower())
+        if not match:
+            return {"passed": None, "evidence": "No count in assertion", "confidence": 0.0}
 
-        # Check for disclaimer
-        if "disclaimer" in assertion_lower:
-            # Look for key disclaimer phrases
-            disclaimer_found = any(
-                phrase in output_lower
-                for phrase in [
-                    "not medical advice",
-                    "consult a healthcare professional",
-                    "consult a doctor",
-                    "seek medical advice",
-                ]
-            )
-            return {
-                "passed": disclaimer_found,
-                "evidence": "Disclaimer found in output"
-                if disclaimer_found
-                else "Disclaimer not found",
-                "confidence": 0.95 if disclaimer_found else 0.9,
-            }
+        required = int(match.group(1))
+        found = len(re.findall(r"^\s*[-*•]\s", output, re.MULTILINE))
+        passed = found >= required
 
-        # Check for weight loss focus
-        if "gradual" in assertion_lower and "weight loss" in assertion_lower:
-            found = any(
-                phrase in output_lower
-                for phrase in [
-                    "gradual",
-                    "sustainable",
-                    "slow and steady",
-                    "long-term",
-                    "consistent",
-                ]
-            )
-            return {
-                "passed": found,
-                "evidence": "Gradual/sustainable approach mentioned"
-                if found
-                else "Gradual approach not mentioned",
-                "confidence": 0.9 if found else 0.85,
-            }
-
-        # Check for safe weight loss rate
-        if (
-            "safe weight loss rate" in assertion_lower
-            or "kg/week" in assertion_lower
-            or "kg per week" in assertion_lower
-        ):
-            found = re.search(r"0\.5[-–]1\s*kg", output_lower) is not None
-            return {
-                "passed": found,
-                "evidence": "Safe weight loss rate (0.5-1 kg/week) mentioned"
-                if found
-                else "Safe weight loss rate not mentioned",
-                "confidence": 0.95 if found else 0.9,
-            }
-
-        # Check for no extreme diet recommendations
-        if "no extreme" in assertion_lower or "quick fixes" in assertion_lower:
-            avoid_extremes = any(
-                phrase in output_lower
-                for phrase in [
-                    "avoid crash diets",
-                    "avoid extreme",
-                    "no quick fixes",
-                    "sustainable",
-                    "gradual",
-                ]
-            )
-            return {
-                "passed": avoid_extremes,
-                "evidence": "Warns against extreme approaches"
-                if avoid_extremes
-                else "No warning against extreme approaches",
-                "confidence": 0.9 if avoid_extremes else 0.85,
-            }
-
-        # Check tone (friendly, encouraging, non-judgmental)
-        if "tone" in assertion_lower and (
-            "friendly" in assertion_lower
-            or "encouraging" in assertion_lower
-            or "positive" in assertion_lower
-            or "supportive" in assertion_lower
-        ):
-            positive_indicators = any(
-                word in output_lower
-                for word in [
-                    "great",
-                    "fantastic",
-                    "good",
-                    "well done",
-                    "keep up",
-                    "excellent",
-                    "healthy",
-                    "encouraging",
-                    "supportive",
-                    "you can",
-                    "progress",
-                ]
-            )
-            return {
-                "passed": positive_indicators,
-                "evidence": "Positive/supportive tone detected"
-                if positive_indicators
-                else "Positive tone not clearly detected",
-                "confidence": 0.8,
-            }
-
-        # Check for absence of negative words
-        if "no use of" in assertion_lower or "avoid" in assertion_lower:
-            negative_words = re.findall(
-                r"\b(bad|failing|unhealthy|poor|terrible)\b", output_lower
-            )
-            passed = len(negative_words) == 0
-            return {
-                "passed": passed,
-                "evidence": f"No negative words found"
-                if passed
-                else f"Found negative words: {negative_words}",
-                "confidence": 0.9 if passed else 0.85,
-            }
-
-        # Default: require manual evaluation
         return {
-            "passed": None,
-            "evidence": "Requires manual evaluation",
-            "confidence": 0.0,
+            "passed": passed,
+            "evidence": f"Found {found} tips (required: {required})",
+            "confidence": 0.9 if passed else 0.85,
+        }
+
+    def _check_disclaimer(self, assertion: str, output: str) -> Dict:
+        """Check if disclaimer is present."""
+        phrases = [
+            "not medical advice",
+            "consult a healthcare professional",
+            "consult a doctor",
+            "seek medical advice",
+        ]
+        found = any(p in output.lower() for p in phrases)
+        return {
+            "passed": found,
+            "evidence": f"Disclaimer {'found' if found else 'not found'}",
+            "confidence": 0.95 if found else 0.9,
+        }
+
+    def _check_gradual_loss(self, assertion: str, output: str) -> Dict:
+        """Check for gradual weight loss approach."""
+        keywords = ["gradual", "sustainable", "slow and steady", "long-term", "consistent"]
+        found = any(k in output.lower() for k in keywords)
+        return {
+            "passed": found,
+            "evidence": f"Gradual approach {'mentioned' if found else 'not mentioned'}",
+            "confidence": 0.9 if found else 0.85,
+        }
+
+    def _check_weight_rate(self, assertion: str, output: str) -> Dict:
+        """Check for safe weight loss rate mention."""
+        found = re.search(r"0\.5[-–]1\s*kg", output.lower()) is not None
+        return {
+            "passed": found,
+            "evidence": f"Safe weight loss rate {'mentioned' if found else 'not mentioned'}",
+            "confidence": 0.95 if found else 0.9,
+        }
+
+    def _check_no_extremes(self, assertion: str, output: str) -> Dict:
+        """Check for warnings against extreme diets."""
+        keywords = ["avoid crash diets", "avoid extreme", "no quick fixes", "sustainable"]
+        found = any(k in output.lower() for k in keywords)
+        return {
+            "passed": found,
+            "evidence": f"Warns against extremes: {'yes' if found else 'no'}",
+            "confidence": 0.9 if found else 0.85,
+        }
+
+    def _check_tone(self, assertion: str, output: str) -> Dict:
+        """Check for positive/supportive tone."""
+        keywords = [
+            "great", "fantastic", "good", "well done", "keep up",
+            "excellent", "healthy", "encouraging", "supportive", "progress",
+        ]
+        found = any(k in output.lower() for k in keywords)
+        return {
+            "passed": found,
+            "evidence": f"Positive tone {'detected' if found else 'not detected'}",
+            "confidence": 0.8,
+        }
+
+    def _check_no_negative(self, assertion: str, output: str) -> Dict:
+        """Check for absence of negative words."""
+        negatives = re.findall(r"\b(bad|failing|unhealthy|poor|terrible)\b", output.lower())
+        passed = len(negatives) == 0
+        return {
+            "passed": passed,
+            "evidence": f"No negative words" if passed else f"Found: {negatives}",
+            "confidence": 0.9 if passed else 0.85,
         }
 
 
-@pytest.fixture
-def evaluator():
-    """Assertion evaluator."""
-    return AssertionEvaluator()
+# ============================================================================
+# Pytest Hooks
+# ============================================================================
 
 
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line("markers", "skill: mark test as a skill evaluation test")
-    config.addinivalue_line(
-        "markers", "baseline: mark test as baseline (without skill)"
-    )
-    config.addinivalue_line("markers", "slow: mark test as slow running")
-
-
-def pytest_collection_modifyitems(config, items):
-    """Add markers to tests based on their names."""
-    for item in items:
-        if "baseline" in item.nodeid:
-            item.add_marker(pytest.mark.baseline)
-        if "with_skill" in item.nodeid:
-            item.add_marker(pytest.mark.skill)
+    config.addinivalue_line("markers", "skill: tests with skill loaded")
+    config.addinivalue_line("markers", "baseline: tests without skill (baseline)")
+    config.addinivalue_line("markers", "slow: slow-running comparison tests")
