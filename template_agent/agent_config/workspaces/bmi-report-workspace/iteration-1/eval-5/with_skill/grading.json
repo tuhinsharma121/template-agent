@@ -1,0 +1,40 @@
+{
+  "assertion_results": [
+    {
+      "text": "Report includes BMI value 24.9",
+      "passed": true,
+      "evidence": "BMI value 24.9 found in output",
+      "confidence": 0.95
+    },
+    {
+      "text": "Report identifies category as Normal",
+      "passed": true,
+      "evidence": "Category 'normal' found in output",
+      "confidence": 0.95
+    },
+    {
+      "text": "Report includes health tips despite casual tone of prompt",
+      "passed": null,
+      "evidence": "Requires manual evaluation",
+      "confidence": 0.0
+    },
+    {
+      "text": "Report includes disclaimer (mandatory even for 'quick' requests)",
+      "passed": false,
+      "evidence": "Disclaimer not found",
+      "confidence": 0.9
+    },
+    {
+      "text": "All three report sections present (Result, Tips, Disclaimer)",
+      "passed": false,
+      "evidence": "Disclaimer not found",
+      "confidence": 0.9
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 2,
+    "total": 5,
+    "pass_rate": 0.4
+  }
+}

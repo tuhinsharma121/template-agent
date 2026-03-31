@@ -11,7 +11,9 @@ from typing import Any
 
 import yaml
 from deepagents import SubAgent, create_deep_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+# from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
@@ -162,7 +164,7 @@ async def get_template_agent(sso_token: str | None = None):
     credentials, project = google.auth.default(
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
-    model = ChatGoogleGenerativeAI(
+    model = ChatVertexAI(
         model="gemini-3.1-pro-preview",
         temperature=0,
         credentials=credentials,

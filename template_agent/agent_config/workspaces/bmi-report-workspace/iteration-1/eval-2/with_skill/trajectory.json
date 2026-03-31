@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "type": "initialize",
+      "content": "Loading skill from bmi-report",
+      "metadata": {},
+      "timestamp": 2.1457672119140625e-06
+    },
+    {
+      "type": "agent_ready",
+      "content": "Agent initialized with skill",
+      "metadata": {},
+      "timestamp": 0.4598231315612793
+    },
+    {
+      "type": "execute",
+      "content": "Running: I calculated my BMI as 17.8, which is Underweight. What should I do?...",
+      "metadata": {},
+      "timestamp": 0.4598240852355957
+    },
+    {
+      "type": "complete",
+      "content": "Output: 1804 chars",
+      "metadata": {},
+      "timestamp": 13.266737937927246
+    }
+  ],
+  "tool_calls": [],
+  "duration_ms": 13266,
+  "total_steps": 4,
+  "total_tool_calls": 0
+}

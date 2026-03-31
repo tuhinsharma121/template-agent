@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "type": "initialize",
+      "content": "Loading skill from bmi-report",
+      "metadata": {},
+      "timestamp": 2.1457672119140625e-06
+    },
+    {
+      "type": "agent_ready",
+      "content": "Agent initialized with skill",
+      "metadata": {},
+      "timestamp": 0.4879121780395508
+    },
+    {
+      "type": "execute",
+      "content": "Running: My BMI result came back at 32.1 (Obese). Give me a report please....",
+      "metadata": {},
+      "timestamp": 0.4879159927368164
+    },
+    {
+      "type": "complete",
+      "content": "Output: 1478 chars",
+      "metadata": {},
+      "timestamp": 32.86297917366028
+    }
+  ],
+  "tool_calls": [],
+  "duration_ms": 32862,
+  "total_steps": 4,
+  "total_tool_calls": 0
+}

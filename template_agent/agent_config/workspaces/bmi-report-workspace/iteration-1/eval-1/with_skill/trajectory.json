@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "type": "initialize",
+      "content": "Loading skill from bmi-report",
+      "metadata": {},
+      "timestamp": 6.198883056640625e-06
+    },
+    {
+      "type": "agent_ready",
+      "content": "Agent initialized with skill",
+      "metadata": {},
+      "timestamp": 0.439115047454834
+    },
+    {
+      "type": "execute",
+      "content": "Running: My BMI is 22.5 and I'm in the Normal category. Can you give me a fitness report?...",
+      "metadata": {},
+      "timestamp": 0.4391171932220459
+    },
+    {
+      "type": "complete",
+      "content": "Output: 956 chars",
+      "metadata": {},
+      "timestamp": 25.386215925216675
+    }
+  ],
+  "tool_calls": [],
+  "duration_ms": 25386,
+  "total_steps": 4,
+  "total_tool_calls": 0
+}
