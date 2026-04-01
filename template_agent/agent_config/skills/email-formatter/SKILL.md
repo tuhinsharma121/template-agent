@@ -26,3 +26,9 @@ When sending a fitness report via `send_email`. Gmail strips `<style>` blocks an
 - **Include disclaimer footer** — mandatory in every email
 - **Skip empty sections** — only render sections with data, no placeholders
 - **Max width 600px** — mobile email client compatibility
+
+## Gotchas
+
+- **Gmail strips `<style>` blocks and CSS classes** — all styles must be inline on every element
+- **Always include the disclaimer** — it's mandatory in every email, never skip it
+- **Skip sections without data** — don't render empty placeholders or "N/A" messages for missing content

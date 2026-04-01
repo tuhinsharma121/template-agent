@@ -102,7 +102,7 @@ def create_analyst_agent(model):
 
     agent = create_deep_agent(
         model=model,
-        skills=[str(skill_path)],
+        skills=[str(skill_path.resolve())],
         tools=[MOCK_TOOLS["calculate_bmi"], MOCK_TOOLS["search_web"]],
         backend=get_backend(),
         checkpointer=MemorySaver(),
@@ -116,7 +116,7 @@ def create_publisher_agent(model):
 
     agent = create_deep_agent(
         model=model,
-        skills=[str(skill_path)],
+        skills=[str(skill_path.resolve())],
         tools=[MOCK_TOOLS["send_email"]],
         backend=get_backend(),
         checkpointer=MemorySaver(),
@@ -136,7 +136,7 @@ def create_orchestrator_agent(model):
 
     agent = create_deep_agent(
         model=model,
-        skills=[str(main_skill_path)],
+        skills=[str(main_skill_path.resolve())],
         subagents=subagents,
         backend=get_backend(),
         checkpointer=MemorySaver(),

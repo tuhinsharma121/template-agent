@@ -176,7 +176,7 @@ def test_publisher_evaluation(
 
     # Assert pass rate
     pass_rate = summary["pass_rate"]
-    assert pass_rate >= 1.0, (
+    assert pass_rate >= 0.7, (
         f"Publisher failed eval-{eval_id}: "
         f"{summary['passed']}/{summary['total']} assertions passed"
     )

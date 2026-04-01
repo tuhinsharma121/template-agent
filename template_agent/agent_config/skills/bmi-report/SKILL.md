@@ -13,6 +13,15 @@ Generate consistent, category-specific BMI reports based on calculated values.
 
 When generating a BMI analysis report for a user based on calculated BMI value and category.
 
+## BMI Categories
+
+| BMI Range | Category |
+|-----------|----------|
+| < 18.5 | Underweight |
+| 18.5–24.9 | Normal |
+| 25–29.9 | Overweight |
+| ≥ 30 | Obese |
+
 ## Resources
 
 - **Categories & Ranges:** `references/bmi_categories.md`

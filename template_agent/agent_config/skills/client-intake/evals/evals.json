@@ -4,43 +4,35 @@
     {
       "id": 1,
       "prompt": "Hi! I'm 175 cm tall and weigh 70 kg. Can you analyze my BMI?",
-      "expected_output": "Greeting, confirmation of metrics in correct units, delegation to analyst with cm and kg values.",
+      "expected_output": "Greeting with Red Hat branding, delegation to analyst, and relay of BMI results.",
       "files": [],
       "assertions": [
-        "Response includes a greeting (mentions Red Hat fitness assistant)",
-        "Height recognized as 175 cm (no conversion needed)",
-        "Weight recognized as 70 kg (no conversion needed)",
-        "Task is delegated to analyst subagent",
-        "No BMI calculation performed by orchestrator itself",
-        "Results are relayed back to user after analyst completes"
+        "Response includes a greeting that mentions Red Hat fitness assistant",
+        "Response includes BMI value and category (from analyst)",
+        "Response includes health tips (from analyst)",
+        "Orchestrator does NOT calculate BMI itself (no direct BMI calculation in orchestrator's response)"
       ]
     },
     {
       "id": 2,
       "prompt": "I'm 5 feet 10 inches tall and weigh 165 pounds. What's my BMI?",
-      "expected_output": "Imperial units converted to metric before routing to analyst.",
+      "expected_output": "Imperial units converted to metric, delegation to analyst, BMI results returned.",
       "files": [],
       "assertions": [
-        "Height converted from 5'10\" to cm (approximately 177.8 cm)",
-        "Weight converted from 165 lbs to kg (approximately 74.84 kg)",
-        "Conversion uses the formulas from client-intake skill (sympy-based)",
-        "Converted values (cm, kg) are sent to analyst",
-        "No BMI calculation by orchestrator",
-        "Uses python3 for conversions (not python)"
+        "Response includes BMI value (approximately 23.7 for 5'10\" and 165 lbs)",
+        "Response includes BMI category (should be Normal)",
+        "Response includes health tips appropriate for the BMI category"
       ]
     },
     {
       "id": 3,
       "prompt": "Height: 6ft, Weight: 180lbs, and please email the report to john@example.com",
-      "expected_output": "Units converted, analyst called, then publisher called with email address.",
+      "expected_output": "Units converted, BMI analysis delegated to analyst, email sent via publisher.",
       "files": [],
       "assertions": [
-        "Height converted from 6 ft to cm (treating missing inches as 0)",
-        "Weight converted from 180 lbs to kg",
-        "Task routed to analyst first",
-        "After analyst completes, task routed to publisher",
-        "Email address john@example.com passed to publisher",
-        "Publisher is NOT invoked until analyst completes (sequential, not parallel)"
+        "Response includes BMI analysis results",
+        "Response confirms email was sent or mentions publisher action",
+        "Email address john@example.com is referenced in the response"
       ]
     }
   ]

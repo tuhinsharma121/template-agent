@@ -83,16 +83,60 @@ template_agent/
 │   ├── agents/               # Subagent definitions (YAML + MD)
 │   └── skills/               # Skill documents per agent
 └── tests/
+    ├── agents/               # Agent-level tests (LLM-as-judge)
+    ├── core/                 # Core unit tests
+    └── routes/               # API route tests
 ```
 
 ## Testing & Quality
 
+### Running Tests
+
 ```bash
-pytest                                           # all tests
-pytest --cov=template_agent.src --cov-report=html  # with coverage
-ruff check . && ruff format .                    # lint + format
-pre-commit run --all-files                       # all hooks
+# All tests
+pytest
+
+# With coverage
+pytest --cov=template_agent.src --cov-report=html
+
+# Agent-level tests only
+pytest tests/agents/ -v
+
+# Specific agent tests
+pytest tests/agents/test_analyst.py -m analyst -v
+pytest tests/agents/test_publisher.py -m publisher -v
+pytest tests/agents/test_orchestrator.py -m orchestrator -v
+
+# Single evaluation
+pytest tests/agents/test_analyst.py -m analyst -k "eval-1" -v
+
+# Code quality
+ruff check . && ruff format .
+pre-commit run --all-files
 ```
+
+### Agent Tests
+
+Tests are organized by agent (orchestrator + subagents), each with its associated skill and tools:
+
+**Analyst** (`test_analyst.py`)
+- Skill: `bmi-report`
+- Tools: `calculate_bmi`, `search_web`
+- Evals: `template_agent/agent_config/skills/bmi-report/evals/evals.json`
+
+**Publisher** (`test_publisher.py`)
+- Skill: `email-formatter`
+- Tools: `send_email`
+- Evals: `template_agent/agent_config/skills/email-formatter/evals/evals.json`
+
+**Orchestrator** (`test_orchestrator.py`)
+- Skill: `client-intake`
+- Subagents: Analyst + Publisher
+- Evals: `template_agent/agent_config/skills/client-intake/evals/evals.json`
+
+Test results saved to `tests/workspaces/{agent}-workspace/eval-{id}/`:
+- `outputs/report.md` - Agent output
+- `outputs/grading.json` - LLM judge evaluation results
 
 ## Deployment
 

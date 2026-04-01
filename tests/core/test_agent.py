@@ -13,7 +13,7 @@ import pytest
 
 from template_agent.src.core.agent import _parse_agent_frontmatter
 
-CONFIG_DIR = Path(__file__).parent.parent / "template_agent" / "agent_config"
+CONFIG_DIR = Path(__file__).parent.parent.parent / "template_agent" / "agent_config"
 
 
 class TestAgentFrontmatterParsing:

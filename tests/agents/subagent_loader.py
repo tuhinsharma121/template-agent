@@ -65,7 +65,7 @@ def load_subagents(
             for skill_name in skill_names:
                 skill_path = skills_dir / skill_name
                 if skill_path.exists():
-                    skill_paths.append(str(skill_path))
+                    skill_paths.append(str(skill_path.resolve()))
             if skill_paths:
                 subagent["skills"] = skill_paths
 
