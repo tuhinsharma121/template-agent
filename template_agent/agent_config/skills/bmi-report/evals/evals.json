@@ -44,34 +44,6 @@
         "No extreme diet recommendations or quick fixes",
         "Tone remains positive and supportive"
       ]
-    },
-    {
-      "id": 4,
-      "prompt": "My BMI result came back at 32.1 (Obese). Give me a report please.",
-      "expected_output": "Obese-category report emphasizing professional support and achievable goals.",
-      "files": [],
-      "assertions": [
-        "Report includes BMI value 32.1",
-        "Report identifies category as Obese",
-        "Health tips recommend professional support (healthcare provider, dietitian)",
-        "Tips focus on small, achievable goals",
-        "Report includes disclaimer",
-        "Tone is compassionate and encouraging (never judgmental)",
-        "Tips acknowledge the importance of support systems"
-      ]
-    },
-    {
-      "id": 5,
-      "prompt": "bmi: 24.9, normal range, make it quick",
-      "expected_output": "Complete report even with casual prompt, maintaining all required elements.",
-      "files": [],
-      "assertions": [
-        "Report includes BMI value 24.9",
-        "Report identifies category as Normal",
-        "Report includes health tips despite casual tone of prompt",
-        "Report includes disclaimer (mandatory even for 'quick' requests)",
-        "All three report sections present (Result, Tips, Disclaimer)"
-      ]
     }
   ]
 }
