@@ -7,7 +7,7 @@ allowing users to view previous conversations and continue ongoing threads.
 from typing import List, Optional
 
 import psycopg2
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query
 from langchain_core.runnables import RunnableConfig
 
 from template_agent.src.core.agent_utils import langchain_to_chat_message
@@ -24,20 +24,19 @@ logger = get_python_logger(settings.PYTHON_LOG_LEVEL)
 @router.get("/v1/history/{thread_id}")
 async def history(
     thread_id: str,
-    request: Request,
-    user_id: Optional[str] = Query(default=None, description="User ID for ownership verification"),
+    user_id: Optional[str] = Query(
+        default=None, description="User ID for ownership verification"
+    ),
 ) -> ChatHistoryResponse:
     """Get chat history for a specific thread.
 
     Args:
         thread_id: The unique identifier of the thread to retrieve history for.
-        request: The FastAPI request object.
         user_id: Optional user ID to verify thread ownership.
 
     Returns:
         A ChatHistoryResponse containing the list of chat messages for the thread.
     """
-    access_token = request.headers.get("X-Token")
     logger.info(f"Retrieving history for thread_id: {thread_id}")
 
     chat_messages: List[ChatMessage] = []
@@ -58,9 +57,7 @@ async def history(
             )
 
             if len(state_history) == 0:
-                logger.info(
-                    f"No checkpoints found for thread {thread_id}"
-                )
+                logger.info(f"No checkpoints found for thread {thread_id}")
                 return ChatHistoryResponse(messages=[])
 
             # Ownership check: verify user_id matches checkpoint metadata
@@ -84,9 +81,7 @@ async def history(
                 channel_values = latest_checkpoint.checkpoint["channel_values"]
                 if "messages" in channel_values:
                     messages = channel_values["messages"]
-                    logger.info(
-                        f"Found {len(messages)} messages in latest checkpoint"
-                    )
+                    logger.info(f"Found {len(messages)} messages in latest checkpoint")
                     for message in messages:
                         try:
                             chat_message = langchain_to_chat_message(message)
@@ -105,15 +100,11 @@ async def history(
                         checkpoint_tuple.checkpoint
                         and "channel_values" in checkpoint_tuple.checkpoint
                     ):
-                        channel_values = checkpoint_tuple.checkpoint[
-                            "channel_values"
-                        ]
+                        channel_values = checkpoint_tuple.checkpoint["channel_values"]
                         if "messages" in channel_values:
                             for message in channel_values["messages"]:
                                 try:
-                                    chat_message = langchain_to_chat_message(
-                                        message
-                                    )
+                                    chat_message = langchain_to_chat_message(message)
                                     is_duplicate = any(
                                         existing.type == chat_message.type
                                         and existing.content == chat_message.content
@@ -122,9 +113,7 @@ async def history(
                                     if not is_duplicate:
                                         chat_messages.append(chat_message)
                                 except Exception as e:
-                                    logger.warning(
-                                        f"Could not convert message: {e}"
-                                    )
+                                    logger.warning(f"Could not convert message: {e}")
                                     continue
 
             logger.info(
@@ -149,9 +138,7 @@ async def history(
                     (thread_id, user_id),
                 )
                 if cur.fetchone() is None:
-                    logger.warning(
-                        f"Thread {thread_id} not found for user {user_id}"
-                    )
+                    logger.warning(f"Thread {thread_id} not found for user {user_id}")
                     return ChatHistoryResponse(messages=[])
 
             # Get the latest checkpoint
